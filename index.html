@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>AudioViz 2000</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; min-height: 100vh; overflow-x: hidden; }
+
+  body {
+    background-color: #000080;
+    background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' viewBox='0 0 4 4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='0' y='0' width='2' height='2' fill='%23000070'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23000070'/%3E%3C/svg%3E");
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 8px 24px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  .window {
+    width: 100%;
+    max-width: 700px;
+    border: 2px solid;
+    border-color: #ffffff #808080 #808080 #ffffff;
+    background: #c0c0c0;
+    box-shadow: inset 1px 1px #dfdfdf, 4px 4px 0 #000;
+  }
+
+  .titlebar {
+    background: linear-gradient(to right, #000080, #1084d0);
+    color: #fff;
+    font-family: 'VT323', monospace;
+    font-size: clamp(14px, 4vw, 18px);
+    padding: 4px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    gap: 8px;
+  }
+  .titlebar-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .titlebar-btns { display: flex; gap: 2px; flex-shrink: 0; }
+  .titlebar-btns span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px; height: 18px;
+    background: #c0c0c0;
+    border: 1px solid;
+    border-color: #fff #808080 #808080 #fff;
+    font-size: 11px;
+    color: #000;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .titlebar-btns span:active { border-color: #808080 #fff #fff #808080; }
+
+  .menubar {
+    background: #c0c0c0;
+    border-bottom: 1px solid #808080;
+    padding: 2px 4px;
+    font-size: clamp(11px, 3vw, 13px);
+    color: #000;
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .menubar span { padding: 3px 8px; cursor: pointer; touch-action: manipulation; white-space: nowrap; }
+  .menubar span:hover, .menubar span:active { background: #000080; color: #fff; }
+
+  .win-body { padding: 10px; background: #c0c0c0; }
+
+  .marquee-box {
+    background: #000;
+    border: 2px solid;
+    border-color: #808080 #fff #fff #808080;
+    overflow: hidden;
+    margin-bottom: 8px;
+    padding: 3px 0;
+  }
+  .marquee-box marquee {
+    color: #ffff00;
+    font-family: 'VT323', monospace;
+    font-size: clamp(13px, 4vw, 16px);
+    letter-spacing: 2px;
+  }
+
+  .viz-panel {
+    position: relative;
+    background: #000;
+    border: 2px solid;
+    border-color: #808080 #fff #fff #808080;
+    width: 100%;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: clamp(140px, 35vw, 220px);
+  }
+  .viz-label {
+    position: absolute;
+    top: 6px; left: 8px;
+    color: #00ff41;
+    font-family: 'VT323', monospace;
+    font-size: clamp(11px, 3vw, 14px);
+    opacity: 0.7;
+    letter-spacing: 2px;
+    pointer-events: none;
+  }
+  .status-overlay {
+    position: absolute;
+    bottom: 6px; right: 8px;
+    color: #00aaff;
+    font-family: 'VT323', monospace;
+    font-size: clamp(11px, 3vw, 14px);
+    opacity: 0.9;
+    pointer-events: none;
+  }
+
+  .track-info {
+    background: #000;
+    border: 2px solid;
+    border-color: #808080 #fff #fff #808080;
+    padding: 5px 10px;
+    color: #00ff41;
+    font-family: 'VT323', monospace;
+    font-size: clamp(13px, 4vw, 17px);
+    margin-bottom: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 1px;
+  }
+
+  .options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .option-group {
+    background: #d4d0c8;
+    border: 2px solid;
+    border-color: #fff #808080 #808080 #fff;
+    padding: 6px 8px;
+  }
+  .option-group strong {
+    display: block;
+    font-size: clamp(10px, 2.5vw, 12px);
+    margin-bottom: 4px;
+    color: #000;
+  }
+  .radio-row { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+  .radio-row label {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: clamp(11px, 3vw, 13px);
+    cursor: pointer;
+    color: #000;
+    touch-action: manipulation;
+  }
+  input[type="radio"] { cursor: pointer; width: 14px; height: 14px; }
+
+  .vol-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: clamp(11px, 3vw, 13px);
+    color: #000;
+    margin-bottom: 8px;
+    background: #d4d0c8;
+    border: 2px solid;
+    border-color: #fff #808080 #808080 #fff;
+    padding: 6px 8px;
+  }
+  .vol-row span { flex-shrink: 0; }
+  input[type="range"] {
+    -webkit-appearance: none;
+    flex: 1;
+    height: 6px;
+    background: #808080;
+    border: 1px solid #999;
+    border-radius: 0;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 22px;
+    background: #c0c0c0;
+    border: 2px solid;
+    border-color: #fff #808080 #808080 #fff;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 16px; height: 22px;
+    background: #c0c0c0;
+    border: 2px solid;
+    border-color: #fff #808080 #808080 #fff;
+    border-radius: 0;
+  }
+  #volVal { font-family: 'VT323', monospace; font-size: 16px; min-width: 38px; }
+
+  .sep { border: none; border-top: 1px solid #808080; border-bottom: 1px solid #fff; margin: 8px 0; }
+
+  #dropZone {
+    border: 2px dashed #808080;
+    background: #000;
+    color: #00ff41;
+    font-family: 'VT323', monospace;
+    font-size: clamp(14px, 4.5vw, 20px);
+    text-align: center;
+    padding: 16px 10px;
+    margin-bottom: 8px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background 0.15s, border-color 0.15s;
+    word-break: break-word;
+  }
+  #dropZone.drag-over { background: #002200; border-color: #00ff41; }
+
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .btn, .file-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: clamp(11px, 3vw, 13px);
+    padding: 8px 10px;
+    background: #c0c0c0;
+    border: 2px solid;
+    border-color: #fff #808080 #808080 #fff;
+    color: #000;
+    cursor: pointer;
+    box-shadow: inset 1px 1px #dfdfdf;
+    text-align: center;
+    touch-action: manipulation;
+    white-space: nowrap;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 38px;
+  }
+  .btn:hover, .file-label:hover { background: #d0d0d0; }
+  .btn:active, .file-label:active { border-color: #808080 #fff #fff #808080; transform: translate(1px,1px); }
+  .btn.primary { background: #000080; color: #fff; border-color: #4444cc #00003a #00003a #4444cc; }
+  .btn.primary:hover { background: #0000aa; }
+  .btn.danger { background: #800000; color: #fff; border-color: #cc4444 #3a0000 #3a0000 #cc4444; }
+  input[type="file"] { display: none; }
+
+  .statusbar {
+    background: #c0c0c0;
+    border-top: 1px solid #808080;
+    padding: 3px 6px;
+    font-size: clamp(10px, 2.5vw, 12px);
+    color: #000;
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .statusbar div {
+    border: 1px inset #808080;
+    padding: 1px 6px;
+    flex: 1;
+    min-width: 80px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  footer {
+    margin-top: 14px;
+    text-align: center;
+    font-family: 'VT323', monospace;
+    font-size: clamp(14px, 4vw, 17px);
+    color: #c0c0ff;
+    text-shadow: 0 0 6px #8888ff;
+    padding: 0 8px;
+  }
+
+  @media (max-width: 480px) {
+    body { padding: 6px 4px 20px; }
+    .options-grid { grid-template-columns: 1fr; }
+    .controls { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="window">
+  <div class="titlebar">
+    <span class="titlebar-title">🎵 AudioViz 2000 — Spectrum Analyzer v1.0</span>
+    <div class="titlebar-btns"><span>_</span><span>□</span><span>✕</span></div>
+  </div>
+
+  <div class="menubar">
+    <span>File</span><span>View</span><span>Visualizer</span><span>Help</span>
+  </div>
+
+  <div class="win-body">
+
+    <div class="marquee-box">
+      <marquee scrollamount="3">★ AUDIOWIZ 2000 ★ &nbsp; LOAD YOUR AUDIO FILE &nbsp; ★ SPECTRUM ANALYZER READY ★ &nbsp; MIC INPUT SUPPORTED &nbsp; ★</marquee>
+    </div>
+
+    <div class="viz-panel">
+      <canvas id="viz"></canvas>
+      <div class="viz-label">SPECTRUM ANALYZER</div>
+      <div class="status-overlay" id="statusOverlay">■ STANDBY</div>
+    </div>
+
+    <div class="track-info" id="trackInfo">► No file loaded — open a file or use MIC</div>
+
+    <div class="options-grid">
+      <div class="option-group">
+        <strong>VIZ MODE</strong>
+        <div class="radio-row">
+          <label><input type="radio" name="mode" value="bars" checked> Bars</label>
+          <label><input type="radio" name="mode" value="wave"> Wave</label>
+          <label><input type="radio" name="mode" value="circle"> Radial</label>
+        </div>
+      </div>
+      <div class="option-group">
+        <strong>COLOR THEME</strong>
+        <div class="radio-row">
+          <label><input type="radio" name="color" value="green" checked> Matrix</label>
+          <label><input type="radio" name="color" value="cyan"> Cyan</label>
+          <label><input type="radio" name="color" value="fire"> Fire</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="vol-row">
+      <span>🔊</span>
+      <strong>VOL</strong>
+      <input type="range" id="volSlider" min="0" max="1" step="0.01" value="1">
+      <span id="volVal">100%</span>
+    </div>
+
+    <hr class="sep">
+
+    <div id="dropZone">📁 TAP OR DRAG &amp; DROP AUDIO FILE HERE</div>
+    <input type="file" id="fileInput" accept="audio/*">
+
+    <div class="controls">
+      <label class="file-label" for="fileInput">📂 OPEN FILE</label>
+      <button class="btn primary" id="playBtn">▶ PLAY</button>
+      <button class="btn" id="pauseBtn">⏸ PAUSE</button>
+      <button class="btn danger" id="stopBtn">⏹ STOP</button>
+      <button class="btn" id="micBtn">🎙 MIC</button>
+    </div>
+
+  </div>
+
+  <div class="statusbar">
+    <div id="sb1">Ready</div>
+    <div id="sb2">Mode: Bars</div>
+    <div id="sb3">AudioViz 2000</div>
+  </div>
+</div>
+
+<footer>
+  ★ <a href="#" style="color:#ffff88;">AudioViz 2000</a> ★<br><br>
+  © Nayanmoni Khatoniar
+</footer>
+
+<script>
+  const canvas = document.getElementById('viz');
+  const ctx = canvas.getContext('2d');
+  const fileInput  = document.getElementById('fileInput');
+  const playBtn    = document.getElementById('playBtn');
+  const pauseBtn   = document.getElementById('pauseBtn');
+  const stopBtn    = document.getElementById('stopBtn');
+  const micBtn     = document.getElementById('micBtn');
+  const trackInfo  = document.getElementById('trackInfo');
+  const statusOverlay = document.getElementById('statusOverlay');
+  const volSlider  = document.getElementById('volSlider');
+  const volVal     = document.getElementById('volVal');
+  const dropZone   = document.getElementById('dropZone');
+
+  let audioCtx, analyser, gainNode, bufferSource, audioBuffer, micNode;
+  let animId, micStream = null;
+
+  function resizeCanvas() {
+    canvas.width  = canvas.offsetWidth  || 300;
+    canvas.height = canvas.offsetHeight || 180;
+  }
+  resizeCanvas();
+  window.addEventListener('resize', () => { resizeCanvas(); if (!analyser) drawIdle(); });
+
+  const getMode  = () => document.querySelector('input[name="mode"]:checked').value;
+  const getColor = () => document.querySelector('input[name="color"]:checked').value;
+
+  function getGradient(h) {
+    const g = ctx.createLinearGradient(0, h, 0, 0);
+    const c = getColor();
+    if      (c==='green') { g.addColorStop(0,'#003300'); g.addColorStop(0.5,'#00cc00'); g.addColorStop(1,'#00ff41'); }
+    else if (c==='cyan')  { g.addColorStop(0,'#003344'); g.addColorStop(0.5,'#0099cc'); g.addColorStop(1,'#00eeff'); }
+    else                  { g.addColorStop(0,'#330000'); g.addColorStop(0.5,'#ff4400'); g.addColorStop(1,'#ffff00'); }
+    return g;
+  }
+
+  function draw() {
+    animId = requestAnimationFrame(draw);
+    const W = canvas.width, H = canvas.height;
+    const mode = getMode();
+    const data = new Uint8Array(analyser.frequencyBinCount);
+
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    for (let y = 0; y < H; y += 4) { ctx.fillStyle='rgba(0,0,0,0.12)'; ctx.fillRect(0,y,W,2); }
+
+    if (mode === 'bars') {
+      analyser.getByteFrequencyData(data);
+      const bars = Math.max(20, Math.floor(W / 6));
+      const bw   = W / bars - 1;
+      for (let i = 0; i < bars; i++) {
+        const val = data[Math.floor(i * data.length / bars)];
+        const h   = (val / 255) * H;
+        ctx.fillStyle = getGradient(H);
+        ctx.fillRect(i * (bw + 1), H - h, bw, h);
+      }
+    } else if (mode === 'wave') {
+      analyser.getByteTimeDomainData(data);
+      const col = getColor()==='fire' ? '#ff6600' : getColor()==='cyan' ? '#00eeff' : '#00ff41';
+      ctx.beginPath(); ctx.strokeStyle = col; ctx.lineWidth = 2;
+      const slice = W / data.length;
+      let x = 0;
+      for (let i = 0; i < data.length; i++) {
+        const y = (data[i] / 128.0) * (H / 2);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        x += slice;
+      }
+      ctx.stroke();
+    } else if (mode === 'circle') {
+      analyser.getByteFrequencyData(data);
+      const cx = W/2, cy = H/2, r = Math.min(W,H)*0.22;
+      for (let i = 0; i < 120; i++) {
+        const angle = (i/120)*Math.PI*2;
+        const val   = data[Math.floor(i*data.length/120)];
+        const len   = (val/255)*r*1.1;
+        const col   = getColor()==='fire' ? `hsl(${val/2},100%,50%)` : getColor()==='cyan' ? `hsl(${180+val/4},100%,60%)` : `hsl(${120+val/4},100%,50%)`;
+        ctx.strokeStyle = col; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cx+Math.cos(angle)*r,     cy+Math.sin(angle)*r);
+        ctx.lineTo(cx+Math.cos(angle)*(r+len), cy+Math.sin(angle)*(r+len));
+        ctx.stroke();
+      }
+    }
+    document.getElementById('sb2').textContent = 'Mode: '+getMode()[0].toUpperCase()+getMode().slice(1);
+  }
+
+  function initCtx() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 2048;
+      gainNode = audioCtx.createGain();
+      analyser.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+    }
+  }
+
+  function stopAll() {
+    if (bufferSource) { try { bufferSource.stop(); } catch(e){} bufferSource.disconnect(); bufferSource = null; }
+    if (micNode)  { micNode.disconnect(); micNode = null; }
+    if (micStream){ micStream.getTracks().forEach(t=>t.stop()); micStream = null; }
+    cancelAnimationFrame(animId);
+    drawIdle();
+  }
+
+  function loadAudioBuffer(arrayBuffer, name) {
+    initCtx();
+    audioCtx.decodeAudioData(arrayBuffer, buf => {
+      audioBuffer = buf;
+      trackInfo.textContent = '► '+name+' — '+buf.duration.toFixed(1)+'s | '+(buf.sampleRate/1000).toFixed(1)+' kHz';
+      statusOverlay.textContent = '■ READY';
+      document.getElementById('sb1').textContent = 'File loaded';
+      dropZone.textContent = '✔ '+name;
+    }, () => { trackInfo.textContent = '► Error: Could not decode audio.'; });
+  }
+
+  fileInput.addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    trackInfo.textContent = '► Loading: '+f.name;
+    const reader = new FileReader();
+    reader.onload = ev => loadAudioBuffer(ev.target.result, f.name);
+    reader.readAsArrayBuffer(f);
+  });
+
+  dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', ()  => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (!f||!f.type.startsWith('audio/')) { trackInfo.textContent='► Not a valid audio file!'; return; }
+    trackInfo.textContent='► Loading: '+f.name;
+    const reader = new FileReader();
+    reader.onload = ev => loadAudioBuffer(ev.target.result, f.name);
+    reader.readAsArrayBuffer(f);
+  });
+  dropZone.addEventListener('click', () => fileInput.click());
+
+  playBtn.addEventListener('click', () => {
+    if (!audioBuffer) { trackInfo.textContent='► Load a file first!'; return; }
+    stopAll(); initCtx();
+    if (audioCtx.state==='suspended') audioCtx.resume();
+    bufferSource = audioCtx.createBufferSource();
+    bufferSource.buffer = audioBuffer;
+    bufferSource.connect(analyser);
+    bufferSource.start();
+    statusOverlay.textContent = '▶ PLAYING';
+    document.getElementById('sb1').textContent = 'Playing...';
+    cancelAnimationFrame(animId); draw();
+    bufferSource.onended = () => { statusOverlay.textContent='■ DONE'; document.getElementById('sb1').textContent='Finished'; };
+  });
+
+  pauseBtn.addEventListener('click', () => {
+    if (!audioCtx) return;
+    if (audioCtx.state==='running') { audioCtx.suspend(); statusOverlay.textContent='⏸ PAUSED'; pauseBtn.textContent='▶ RESUME'; }
+    else { audioCtx.resume(); statusOverlay.textContent='▶ PLAYING'; pauseBtn.textContent='⏸ PAUSE'; }
+  });
+
+  stopBtn.addEventListener('click', () => {
+    stopAll(); statusOverlay.textContent='■ STOPPED';
+    document.getElementById('sb1').textContent='Stopped';
+    pauseBtn.textContent='⏸ PAUSE';
+  });
+
+  micBtn.addEventListener('click', async () => {
+    try {
+      stopAll(); initCtx();
+      if (audioCtx.state==='suspended') audioCtx.resume();
+      micStream = await navigator.mediaDevices.getUserMedia({audio:true});
+      micNode   = audioCtx.createMediaStreamSource(micStream);
+      micNode.connect(analyser);
+      trackInfo.textContent='► 🎙 Live Microphone Input';
+      statusOverlay.textContent='● REC';
+      document.getElementById('sb1').textContent='Mic active';
+      cancelAnimationFrame(animId); draw();
+    } catch(e) { trackInfo.textContent='► Mic access denied or unavailable.'; }
+  });
+
+  volSlider.addEventListener('input', () => {
+    if (gainNode) gainNode.gain.value = volSlider.value;
+    volVal.textContent = Math.round(volSlider.value*100)+'%';
+  });
+
+  function drawIdle() {
+    resizeCanvas();
+    const W = canvas.width, H = canvas.height;
+    ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='#001a00'; ctx.lineWidth=1;
+    for (let x=0;x<W;x+=40){ ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke(); }
+    for (let y=0;y<H;y+=20){ ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke(); }
+  }
+  drawIdle();
+</script>
+</body>
+</html>
